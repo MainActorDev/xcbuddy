@@ -28,7 +28,7 @@ chmod +x install.sh
 ## 🚀 Usage
 
 ### Interactive Dashboard ✨ (Recommended)
-`xcbuddy` features a beautiful, boxed terminal UI dashboard (similar to `binsider` and standard interactive CLI tools). Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
+`xcbuddy` features a beautiful, boxed terminal UI dashboard for rapid development. Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
 ```bash
 xcbuddy interactive
 ```
