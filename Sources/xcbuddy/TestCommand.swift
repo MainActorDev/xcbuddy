@@ -19,7 +19,7 @@ struct TestCommand: ParsableCommand {
     func run() throws {
         let context = ProjectContext()
         guard context.isValid else {
-            print("❌ No workspace, project, or Package.swift found in the current directory.")
+            TerminalUI.printError("No workspace, project, or Package.swift found in the current directory.")
             throw ExitCode.failure
         }
         
@@ -39,15 +39,18 @@ struct TestCommand: ParsableCommand {
             args.append(contentsOf: ["-only-testing:\(onlyTest)"])
         }
         
-        print("🧪 Testing \(buildScheme ?? "project")...")
+        TerminalUI.printMainStep("🧪", message: "Testing \(buildScheme ?? "project")...")
         
         let useBeautify = try isCommandAvailable("xcbeautify")
         if useBeautify {
+            TerminalUI.printSubStep("Using xcbeautify to format output...")
             let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
             try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false)
         } else {
             try Shell.run("xcodebuild", arguments: args)
         }
+        
+        TerminalUI.printSuccess("Testing Completed")
     }
     
     private func isCommandAvailable(_ tool: String) throws -> Bool {

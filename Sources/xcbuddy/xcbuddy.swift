@@ -14,7 +14,20 @@ struct XCBuddy: ParsableCommand {
             SimCommand.self,
             RunCommand.self,
             CreateCommand.self,
-            LogCommand.self
+            LogCommand.self,
+            InteractiveCommand.self,
+            I.self
         ]
     )
+}
+
+struct I: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "i",
+        abstract: "Alias for `interactive`."
+    )
+    func run() throws {
+        let cmd = InteractiveCommand()
+        try cmd.run()
+    }
 }

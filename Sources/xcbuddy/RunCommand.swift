@@ -16,12 +16,12 @@ struct RunCommand: ParsableCommand {
     func run() throws {
         let context = ProjectContext()
         guard context.isValid else {
-            print("❌ No valid Xcode project found.")
+            TerminalUI.printError("No valid Xcode project found.")
             throw ExitCode.failure
         }
         
         let buildScheme = scheme ?? context.inferredScheme
-        print("🚀 Preparing \(buildScheme ?? "project") for execution...")
+        TerminalUI.printMainStep("🚀", message: "Preparing \(buildScheme ?? "project") for execution...")
         
         // Find the simulator UDID early so we can build specifically for its architecture
         var finalDestination = "generic/platform=iOS Simulator"
@@ -33,7 +33,7 @@ struct RunCommand: ParsableCommand {
                  finalDestination = "platform=iOS Simulator,id=\(udid)"
                  simTargetUDID = udid
              } else {
-                 print("⚠️ Could not find specific simulator matching '\(destName)'. Falling back to generic simulator.")
+                 TerminalUI.printSubStep("⚠️ Could not find specific simulator matching '\(destName)'. Falling back to generic simulator.")
              }
         } else {
             // Find a currently booted simulator UDID just in case 'booted' is ambiguous
@@ -49,7 +49,7 @@ struct RunCommand: ParsableCommand {
         if let buildScheme { buildArgs.append(contentsOf: ["-scheme", buildScheme]) }
         buildArgs.append(contentsOf: ["-destination", finalDestination])
         
-        print("🛠️  Compiling for \(finalDestination)...")
+        TerminalUI.printSubStep("Compiling for \(finalDestination)...")
         let useBeautify = try isCommandAvailable("xcbeautify")
         if useBeautify {
             let fullCommand = "xcodebuild \(buildArgs.joined(separator: " ")) | xcbeautify"
@@ -57,51 +57,49 @@ struct RunCommand: ParsableCommand {
         } else {
             try Shell.run("xcodebuild", arguments: buildArgs)
         }
+        TerminalUI.completeLastSubStep("Compiling for \(finalDestination)")
         
         // 2. Locate built product
-        print("🔍 Locating build product...")
+        TerminalUI.printSubStep("Locating build product...")
         var settingsArgs = ["xcodebuild", "-showBuildSettings"]
         settingsArgs.append(contentsOf: context.xcodebuildTargetArgs)
         if let buildScheme { settingsArgs.append(contentsOf: ["-scheme", buildScheme]) }
         settingsArgs.append(contentsOf: ["-destination", finalDestination])
         
         let settingsOutput = try Shell.capture("xcodebuild", arguments: Array(settingsArgs.dropFirst()), echoPattern: false)
-        print("💡 settingsOutput character count: \(settingsOutput.count)")
         
         guard let buildDir = extractSetting(from: settingsOutput, key: "TARGET_BUILD_DIR"),
               let productName = extractSetting(from: settingsOutput, key: "FULL_PRODUCT_NAME"),
               let bundleIdentifier = extractSetting(from: settingsOutput, key: "PRODUCT_BUNDLE_IDENTIFIER") else {
-            print("❌ Could not determine built app path or bundle identifier.")
-            print("💡 This usually happens if you are trying to 'run' a framework or library package instead of an application target (e.g. running from the root instead of the Demo/ folder).")
-            // Debug the keys 
-            let dir = extractSetting(from: settingsOutput, key: "TARGET_BUILD_DIR")
-            let name = extractSetting(from: settingsOutput, key: "FULL_PRODUCT_NAME")
-            let id = extractSetting(from: settingsOutput, key: "PRODUCT_BUNDLE_IDENTIFIER")
-            print("TARGET_BUILD_DIR: \(dir ?? "nil")")
-            print("FULL_PRODUCT_NAME: \(name ?? "nil")")
-            print("PRODUCT_BUNDLE_IDENTIFIER: \(id ?? "nil")")
+            TerminalUI.printError("Could not determine built app path or bundle identifier.\n💡 This usually happens if you are trying to 'run' a framework or library package instead of an application target (e.g. running from the root instead of the Demo/ folder).")
             throw ExitCode.failure
         }
         
         let appPath = URL(fileURLWithPath: buildDir).appendingPathComponent(productName).path
+        TerminalUI.completeLastSubStep("Located build product (\(productName))")
         
         // Ensure simulator is booted (ignore error if it's already booted)
         _ = try? Shell.run("xcrun", arguments: ["simctl", "boot", simTargetUDID], echoPattern: false)
         
+        TerminalUI.printMainStep("📦", message: "Preparing to launch \(productName) on Simulator...")
+        
         // Open Simulator app *before* installing/launching so the UI workspace is ready
-        print("🖥️  Opening Simulator...")
+        TerminalUI.printSubStep("Waking Simulator UI...")
         _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false)
         
         // Give the simulator app time to register the device if it just booted
         Thread.sleep(forTimeInterval: 5.0)
+        TerminalUI.completeLastSubStep("Simulator UI ready")
         
-        print("📦 Installing \(appPath) to simulator (\(simTargetUDID))...")
+        TerminalUI.printSubStep("Installing app to \(simTargetUDID)...")
         _ = try Shell.run("xcrun", arguments: ["simctl", "install", simTargetUDID, appPath], echoPattern: false)
+        TerminalUI.completeLastSubStep("App installed")
         
-        print("🏃‍♂️ Launching \(bundleIdentifier)...")
+        TerminalUI.printSubStep("Launching \(bundleIdentifier)...")
         _ = try Shell.run("xcrun", arguments: ["simctl", "launch", simTargetUDID, bundleIdentifier], echoPattern: false)
+        TerminalUI.completeLastSubStep("App launched")
         
-        print("✅ App launched successfully!")
+        TerminalUI.printSuccess("App Launched Successfully")
         
         // Open Simulator app
         _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false)

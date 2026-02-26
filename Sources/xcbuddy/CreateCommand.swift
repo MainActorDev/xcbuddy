@@ -19,19 +19,20 @@ struct CreateCommand: ParsableCommand {
         let projectPath = URL(fileURLWithPath: currentPath).appendingPathComponent(name).path
         
         if fileManager.fileExists(atPath: projectPath) {
-            print("❌ Directory '\(name)' already exists.")
+            TerminalUI.printError("Directory '\(name)' already exists.")
             throw ExitCode.failure
         }
         
-        print("📁 Creating project directory: \(name)...")
+        TerminalUI.printMainStep("📁", message: "Creating project directory: \(name)...")
         try fileManager.createDirectory(atPath: projectPath, withIntermediateDirectories: true, attributes: nil)
         
         fileManager.changeCurrentDirectoryPath(projectPath)
         
-        print("📦 Initializing Swift \(type)...")
+        TerminalUI.printSubStep("Initializing Swift \(type)...")
         _ = try Shell.run("swift", arguments: ["package", "init", "--type", type, "--name", name], echoPattern: false)
+        TerminalUI.completeLastSubStep("Initialized Swift \(type)")
         
-        print("✅ Project '\(name)' created successfully at \(projectPath)")
-        print("👉 cd \(name) && xcbuddy build")
+        TerminalUI.printSuccess("Project '\(name)' created successfully at \(projectPath)")
+        TerminalUI.printSubStep("cd \(name) && xcbuddy build\n")
     }
 }
