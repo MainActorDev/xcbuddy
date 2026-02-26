@@ -19,11 +19,11 @@
 ```bash
 git clone https://github.com/MainActorDev/xcbuddy.git
 cd xcbuddy
-swift build -c release
-cp .build/release/xcbuddy ~/.local/bin/xcbuddy
+chmod +x install.sh
+./install.sh
 ```
 
-*Ensure `~/.local/bin` is in your `$PATH`.*
+*The script will automatically compile xcbuddy, move it to `~/.local/bin`, and verify your `$PATH`.*
 
 ## 🚀 Usage
 
