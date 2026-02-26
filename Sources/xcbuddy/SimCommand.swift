@@ -15,13 +15,13 @@ struct SimCommand: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Lists available simulators nicely.")
         
         func run() throws {
-            print("📱 Fetching simulator list...")
+            TerminalUI.printMainStep("📱", message: "Fetching simulator list...\n")
             // Run simctl list -j to get JSON
             let jsonString = try Shell.capture("xcrun", arguments: ["simctl", "list", "devices", "-j"])
             guard let data = jsonString.data(using: .utf8),
                   let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let devicesDict = json["devices"] as? [String: [[String: Any]]] else {
-                print("❌ Failed to parse simulator JSON.")
+                TerminalUI.printError("Failed to parse simulator JSON.")
                 return
             }
             
@@ -41,13 +41,14 @@ struct SimCommand: ParsableCommand {
                     let isBooted = state == "Booted"
                     
                     let icon = isBooted ? "🟢" : "⚪️"
-                    print("  \(icon) \(name)")
+                    let displayName = isBooted ? TerminalUI.textBold(name) : name
+                    print("  \(icon) \(displayName)")
+                    hasPrinted = true
                 }
-                hasPrinted = true
             }
             
             if !hasPrinted {
-                print("No available simulators found.")
+                TerminalUI.printSubStep("No available simulators found.")
             }
         }
     }
@@ -65,12 +66,12 @@ struct SimCommand: ParsableCommand {
     
     /// A helper function to find and boot a simulator by fuzzy name
     static func tryBootSimulator(query: String) throws {
-        print("🔍 Searching for simulator matching '\(query)'...")
+        TerminalUI.printSubStep("Searching for simulator matching '\(query)'...")
         let jsonString = try Shell.capture("xcrun", arguments: ["simctl", "list", "devices", "-j"])
         guard let data = jsonString.data(using: .utf8),
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let devicesDict = json["devices"] as? [String: [[String: Any]]] else {
-            print("❌ Failed to parse simulator JSON.")
+            TerminalUI.printError("Failed to parse simulator JSON.")
             return
         }
         
@@ -95,20 +96,20 @@ struct SimCommand: ParsableCommand {
         }
         
         guard let match = bestMatch, let udid = match["udid"] as? String, let name = match["name"] as? String else {
-            print("❌ No simulator found matching '\(query)'.")
+            TerminalUI.printError("No simulator found matching '\(query)'.")
             return
         }
         
         let state = match["state"] as? String ?? "Unknown"
         if state == "Booted" {
-            print("✅ \(name) is already booted.")
-            try self.openSimulatorApp()
+            TerminalUI.printSuccess("\(name) is already booted.")
+            try openSimulatorApp()
             return
         }
         
-        print("📱 Booting \(name)...")
+        TerminalUI.printMainStep("📱", message: "Booting \(name)...")
         _ = try Shell.run("xcrun", arguments: ["simctl", "boot", udid], echoPattern: false)
-        try self.openSimulatorApp()
+        try openSimulatorApp()
     }
     
     static func openSimulatorApp() throws {

@@ -17,7 +17,7 @@ struct BuildCommand: ParsableCommand {
         let context = ProjectContext()
         
         guard context.isValid else {
-            print("❌ No workspace, project, or Package.swift found in the current directory.")
+            TerminalUI.printError("No workspace, project, or Package.swift found in the current directory.")
             throw ExitCode.failure
         }
         
@@ -31,7 +31,7 @@ struct BuildCommand: ParsableCommand {
         if let buildScheme {
              args.append(contentsOf: ["-scheme", buildScheme])
         } else {
-             print("⚠️ Could not infer a scheme automatically. You may need to provide one with --scheme.")
+             TerminalUI.printSubStep("⚠️ Could not infer a scheme automatically. You may need to provide one with --scheme.")
         }
         
         // Destination
@@ -41,20 +41,20 @@ struct BuildCommand: ParsableCommand {
         // Default to beautified output if xcbeautify is installed
         let useBeautify = try isCommandAvailable("xcbeautify")
         
-        print("🛠️  Building \(buildScheme ?? "project") for \(finalDestination)...")
+        TerminalUI.printMainStep("🛠️", message: "Building \(buildScheme ?? "project") for \(finalDestination)...")
         
         if useBeautify {
-            print("✨ Using xcbeautify to format output.")
+            TerminalUI.printSubStep("Using xcbeautify to format output...")
             
             // For xcbeautify, we pipe using the bash shell to handle the pipe properly
             let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false)
+            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
         } else {
             // raw xcodebuild
-            try Shell.run("xcodebuild", arguments: args)
+            try Shell.run("xcodebuild", arguments: args, quiet: true)
         }
         
-        print("✅ Build succeeded!")
+        TerminalUI.printSuccess("Build Succeeded")
     }
     
     /// Helper to check if a command exists in the user's path

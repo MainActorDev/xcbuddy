@@ -20,15 +20,14 @@ struct LogCommand: ParsableCommand {
             if let udid = try? getSimulatorUDID(matching: destName) {
                 simTargetUDID = udid
             } else {
-                print("⚠️ Could not find specific simulator matching '\(destName)'. Falling back to 'booted'.")
+                TerminalUI.printSubStep("⚠️ Could not find specific simulator matching '\(destName)'. Falling back to 'booted'.")
             }
         } else {
             if let bootedUDID = try? getFirstBootedSimulatorUDID() {
                 simTargetUDID = bootedUDID
             }
         }
-        
-        print("📝 Streaming logs for Simulator \(simTargetUDID)... (Press Ctrl+C to stop)")
+        TerminalUI.printMainStep("📝", message: "Streaming logs for Simulator \(simTargetUDID)... (Press Ctrl+C to stop)")
         var args = ["simctl", "spawn", simTargetUDID, "log", "stream"]
         if let process = process {
              args.append(contentsOf: ["--predicate", "processImagePath contains \"\(process)\""])

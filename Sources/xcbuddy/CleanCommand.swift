@@ -14,11 +14,11 @@ struct CleanCommand: ParsableCommand {
         let context = ProjectContext()
         
         guard context.isValid else {
-            print("❌ No workspace, project, or Package.swift found in the current directory.")
+            TerminalUI.printError("No workspace, project, or Package.swift found in the current directory.")
             throw ExitCode.failure
         }
         
-        print("🧹 Cleaning project...")
+        TerminalUI.printMainStep("🧹", message: "Cleaning project...")
         
         var args = ["clean"]
         args.append(contentsOf: context.xcodebuildTargetArgs)
@@ -29,7 +29,7 @@ struct CleanCommand: ParsableCommand {
         }
         
         // Default clean
-        _ = try? Shell.run("xcodebuild", arguments: args, echoPattern: false)
+        _ = try? Shell.run("xcodebuild", arguments: args, echoPattern: false, quiet: true)
         
         if deep {
             // "Deep" clean means we want to find the DerivedData folder and delete it.
@@ -49,19 +49,19 @@ struct CleanCommand: ParsableCommand {
                 let matchingDirs = directories.filter { $0.hasPrefix("\(projectName)-") }
                 
                 if matchingDirs.isEmpty {
-                    print("⚠️ No specific DerivedData folder found for '\(projectName)'.")
+                    TerminalUI.printSubStep("⚠️ No specific DerivedData folder found for '\(projectName)'.")
                 } else {
                     for dir in matchingDirs {
                         let fullPath = derivedDataPath.appendingPathComponent(dir)
                         try fileManager.removeItem(at: fullPath)
-                        print("🗑️  Deleted specific DerivedData: \(dir)")
+                        TerminalUI.printSubStep("Deleted specific DerivedData: \(dir)")
                     }
                 }
             } catch {
-                print("⚠️ Failed to perform deep clean of derived data: \(error.localizedDescription)")
+                TerminalUI.printError("Failed to perform deep clean of derived data: \(error.localizedDescription)")
             }
         }
         
-        print("✅ Clean complete!")
+        TerminalUI.printSuccess("Clean Complete")
     }
 }
