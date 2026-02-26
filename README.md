@@ -25,10 +25,14 @@ chmod +x install.sh
 
 *The script will automatically compile xcbuddy, move it to `~/.local/bin`, and verify your `$PATH`.*
 
+## 🤖 Agentic Coding
+
+If you are using AI coding assistants, `xcbuddy` includes a `SKILL.md` file designed to provide agents with the context they need to use this tool effectively. Point your agent to the `SKILL.md` file in the root of this repository to ensure it uses the best commands and follows the recommended development flow.
+
 ## 🚀 Usage
 
 ### Interactive Dashboard ✨ (Recommended)
-`xcbuddy` features a beautiful, boxed terminal UI dashboard (similar to `binsider` and standard interactive CLI tools). Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
+`xcbuddy` features a beautiful, boxed terminal UI dashboard for rapid development. Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
 ```bash
 xcbuddy interactive
 ```
