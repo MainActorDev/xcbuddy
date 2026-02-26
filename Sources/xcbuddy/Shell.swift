@@ -23,8 +23,8 @@ public enum Shell {
     /// Executes a command and pipes the output in real-time to standard out.
     /// Good for commands where the user wants to see the intermediate logs (like xcodebuild).
     @discardableResult
-    public static func run(_ command: String, arguments: [String] = [], echoPattern: Bool = true) throws -> Int32 {
-        if echoPattern {
+    public static func run(_ command: String, arguments: [String] = [], echoPattern: Bool = true, quiet: Bool = false) throws -> Int32 {
+        if echoPattern && !quiet {
             print("> \(command) \(arguments.joined(separator: " "))")
         }
         
@@ -32,19 +32,42 @@ public enum Shell {
         process.executableURL = Self.executableURL(for: command)
         process.arguments = arguments
         
-        // Pass parent standard I/O directly to the child process
-        process.standardOutput = FileHandle.standardOutput
-        process.standardError = FileHandle.standardError
-        
-        try process.run()
-        process.waitUntilExit()
-        
-        let status = process.terminationStatus
-        guard status == 0 else {
-            throw ShellError.executionFailed(status: status, output: "", error: "Failed to execute. Check standard output.")
+        if quiet {
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+            
+            try process.run()
+            
+            let outputData = try outputPipe.fileHandleForReading.readToEnd() ?? Data()
+            let errorData = try errorPipe.fileHandleForReading.readToEnd() ?? Data()
+            
+            process.waitUntilExit()
+            
+            let status = process.terminationStatus
+            guard status == 0 else {
+                let output = String(decoding: outputData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                let error = String(decoding: errorData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                throw ShellError.executionFailed(status: status, output: output, error: error)
+            }
+            
+            return status
+        } else {
+            // Pass parent standard I/O directly to the child process
+            process.standardOutput = FileHandle.standardOutput
+            process.standardError = FileHandle.standardError
+            
+            try process.run()
+            process.waitUntilExit()
+            
+            let status = process.terminationStatus
+            guard status == 0 else {
+                throw ShellError.executionFailed(status: status, output: "", error: "Failed to execute. Check standard output.")
+            }
+            
+            return status
         }
-        
-        return status
     }
     
     /// Executes a command and captures its standard output and standard error as strings.

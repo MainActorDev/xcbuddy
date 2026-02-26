@@ -53,9 +53,9 @@ struct RunCommand: ParsableCommand {
         let useBeautify = try isCommandAvailable("xcbeautify")
         if useBeautify {
             let fullCommand = "xcodebuild \(buildArgs.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false)
+            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
         } else {
-            try Shell.run("xcodebuild", arguments: buildArgs)
+            try Shell.run("xcodebuild", arguments: buildArgs, quiet: true)
         }
         TerminalUI.completeLastSubStep("Compiling for \(finalDestination)")
         
@@ -79,30 +79,30 @@ struct RunCommand: ParsableCommand {
         TerminalUI.completeLastSubStep("Located build product (\(productName))")
         
         // Ensure simulator is booted (ignore error if it's already booted)
-        _ = try? Shell.run("xcrun", arguments: ["simctl", "boot", simTargetUDID], echoPattern: false)
+        _ = try? Shell.run("xcrun", arguments: ["simctl", "boot", simTargetUDID], echoPattern: false, quiet: true)
         
         TerminalUI.printMainStep("📦", message: "Preparing to launch \(productName) on Simulator...")
         
         // Open Simulator app *before* installing/launching so the UI workspace is ready
         TerminalUI.printSubStep("Waking Simulator UI...")
-        _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false)
+        _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false, quiet: true)
         
         // Give the simulator app time to register the device if it just booted
         Thread.sleep(forTimeInterval: 5.0)
         TerminalUI.completeLastSubStep("Simulator UI ready")
         
         TerminalUI.printSubStep("Installing app to \(simTargetUDID)...")
-        _ = try Shell.run("xcrun", arguments: ["simctl", "install", simTargetUDID, appPath], echoPattern: false)
+        _ = try Shell.run("xcrun", arguments: ["simctl", "install", simTargetUDID, appPath], echoPattern: false, quiet: true)
         TerminalUI.completeLastSubStep("App installed")
         
         TerminalUI.printSubStep("Launching \(bundleIdentifier)...")
-        _ = try Shell.run("xcrun", arguments: ["simctl", "launch", simTargetUDID, bundleIdentifier], echoPattern: false)
+        _ = try Shell.run("xcrun", arguments: ["simctl", "launch", simTargetUDID, bundleIdentifier], echoPattern: false, quiet: true)
         TerminalUI.completeLastSubStep("App launched")
         
         TerminalUI.printSuccess("App Launched Successfully")
         
         // Open Simulator app
-        _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false)
+        _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false, quiet: true)
     }
     
     private func getSimulatorUDID(matching query: String) throws -> String? {

@@ -27,7 +27,16 @@ chmod +x install.sh
 
 ## 🚀 Usage
 
-### Build & Run
+### Interactive Dashboard ✨ (Recommended)
+`xcbuddy` features a beautiful, boxed terminal UI dashboard (similar to `binsider` and standard interactive CLI tools). Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
+```bash
+xcbuddy interactive
+```
+*Keyboard Shortcuts:* `r` (Run), `b` (Build), `t` (Test), `c` (Clean), `l` (Logs), `q` (Quit).
+
+### Standalone Commands
+
+#### Build & Run
 ```bash
 # Build the project in the current directory
 xcbuddy build

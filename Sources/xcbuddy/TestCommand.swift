@@ -45,9 +45,9 @@ struct TestCommand: ParsableCommand {
         if useBeautify {
             TerminalUI.printSubStep("Using xcbeautify to format output...")
             let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false)
+            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
         } else {
-            try Shell.run("xcodebuild", arguments: args)
+            try Shell.run("xcodebuild", arguments: args, quiet: true)
         }
         
         TerminalUI.printSuccess("Testing Completed")

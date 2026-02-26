@@ -48,10 +48,10 @@ struct BuildCommand: ParsableCommand {
             
             // For xcbeautify, we pipe using the bash shell to handle the pipe properly
             let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false)
+            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
         } else {
             // raw xcodebuild
-            try Shell.run("xcodebuild", arguments: args)
+            try Shell.run("xcodebuild", arguments: args, quiet: true)
         }
         
         TerminalUI.printSuccess("Build Succeeded")

@@ -29,7 +29,7 @@ struct CleanCommand: ParsableCommand {
         }
         
         // Default clean
-        _ = try? Shell.run("xcodebuild", arguments: args, echoPattern: false)
+        _ = try? Shell.run("xcodebuild", arguments: args, echoPattern: false, quiet: true)
         
         if deep {
             // "Deep" clean means we want to find the DerivedData folder and delete it.
