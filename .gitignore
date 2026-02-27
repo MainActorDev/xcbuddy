@@ -8,4 +8,4 @@ DerivedData/
 .netrc
 xcbuddy_bin
 .agent/
-
+.xcbuddy_test_results.xcresult/
