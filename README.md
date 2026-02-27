@@ -12,6 +12,9 @@
 
 - **Auto-Detection**: Automatically finds `.xcworkspace`, `.xcodeproj`, or `Package.swift`.
 - **Fuzzy Simulator Matching**: Use `xcbuddy run -d "16 Pro"` instead of long destination strings.
+- **Project Insights**: Quickly view targets and configurations with `xcbuddy info`.
+- **Fast Xcode Access**: Open your project or DerivedData instantly with `xcbuddy open`.
+- **Built-in Tooling**: Lint and format code with integrated wrappers.
 - **Smart Launching**: Automatically boots simulators and opens the Simulator app before launching your app.
 - **Clean with Power**: `xcbuddy clean --deep` wipes the specific DerivedData folder for your project.
 - **Real-time Logs**: `xcbuddy logs` streams simulator console output directly to your terminal.
@@ -40,7 +43,7 @@ If you are using AI coding assistants, `xcbuddy` includes a `SKILL.md` file desi
 ```bash
 xcbuddy i
 ```
-*Keyboard Shortcuts:* `r` (Run), `b` (Build), `t` (Test), `c` (Clean), `l` (Logs), `q` (Quit).
+*Keyboard Shortcuts:* `r` (Run), `b` (Build), `t` (Test), `s` (Select Simulator), `c` (Clean), `l` (Logs), `q` (Quit).
 
 ### Standalone Commands
 
@@ -63,6 +66,9 @@ xcbuddy test
 
 # Run a specific test class
 xcbuddy test --only "MyTests/LoginTests"
+
+# Run tests and generate/open an HTML coverage report
+xcbuddy test --coverage
 ```
 
 ### Simulator Management
@@ -85,6 +91,12 @@ xcbuddy logs -p "MyAwesomeApp"
 
 ### Project Management
 ```bash
+# Open the project in Xcode
+xcbuddy open
+
+# Open the project's DerivedData folder in Finder
+xcbuddy open --derived-data
+
 # Clean the project
 xcbuddy clean
 
@@ -93,6 +105,20 @@ xcbuddy clean --deep
 
 # Create a new Swift project
 xcbuddy create MyNewProject --type executable
+```
+
+### Insights & Tooling
+```bash
+# Print project targets, schemes, and configurations
+xcbuddy info
+
+# Swift Package Manager shortcuts
+xcbuddy spm resolve
+xcbuddy spm update
+
+# Run swiftlint or swiftformat in the current directory
+xcbuddy lint
+xcbuddy format
 ```
 
 ## 📄 License

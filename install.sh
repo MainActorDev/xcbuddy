@@ -12,6 +12,10 @@ mkdir -p "$INSTALL_DIR"
 echo "📦 Installing to $INSTALL_DIR/xcbuddy"
 cp .build/release/xcbuddy "$INSTALL_DIR/xcbuddy"
 
+# Re-sign the binary to prevent AMFI/Gatekeeper from killing the process on macOS ARM64
+echo "✍️  Signing binary..."
+codesign -f -s - "$INSTALL_DIR/xcbuddy"
+
 echo "✅ xcbuddy successfully installed!"
 
 # Check if ~/.local/bin is in PATH
