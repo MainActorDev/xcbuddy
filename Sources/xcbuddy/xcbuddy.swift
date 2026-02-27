@@ -16,6 +16,7 @@ struct XCBuddy: ParsableCommand {
             CreateCommand.self,
             LogCommand.self,
             InteractiveCommand.self,
+            OpenCommand.self,
             I.self
         ]
     )
