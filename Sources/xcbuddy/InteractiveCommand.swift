@@ -49,7 +49,7 @@ struct InteractiveCommand: ParsableCommand {
             case "r":
                 do {
                     TerminalUI.printMainStep("▶️", message: "RUNNING \(context.inferredScheme ?? "Project")")
-                    var runCommand = try RunCommand.parse([])
+                    let runCommand = try RunCommand.parse([])
                     try runCommand.run()
                     print("\n")
                 } catch {
@@ -58,7 +58,7 @@ struct InteractiveCommand: ParsableCommand {
             case "b":
                 do {
                     TerminalUI.printMainStep("🛠️", message: "BUILDING \(context.inferredScheme ?? "Project")")
-                    var buildCommand = try BuildCommand.parse([])
+                    let buildCommand = try BuildCommand.parse([])
                     try buildCommand.run()
                     print("\n")
                 } catch {
@@ -67,7 +67,7 @@ struct InteractiveCommand: ParsableCommand {
             case "t":
                 do {
                     TerminalUI.printMainStep("🧪", message: "TESTING \(context.inferredScheme ?? "Project")")
-                    var testCommand = try TestCommand.parse([])
+                    let testCommand = try TestCommand.parse([])
                     try testCommand.run()
                     print("\n")
                 } catch {
@@ -76,7 +76,7 @@ struct InteractiveCommand: ParsableCommand {
             case "l":
                 do {
                     TerminalUI.printMainStep("📝", message: "STREAMING LOGS")
-                    var logsCommand = try LogCommand.parse([])
+                    let logsCommand = try LogCommand.parse([])
                     try logsCommand.run()
                     print("\n")
                 } catch {
@@ -93,7 +93,7 @@ struct InteractiveCommand: ParsableCommand {
             case "c":
                  do {
                      TerminalUI.printMainStep("🧹", message: "CLEANING \(context.inferredScheme ?? "Project")")
-                     var cleanCommand = try CleanCommand.parse([])
+                     let cleanCommand = try CleanCommand.parse([])
                      try cleanCommand.run()
                      print("\n")
                  } catch {

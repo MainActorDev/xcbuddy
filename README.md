@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="xcbuddy.png" alt="xcbuddy Banner" width="800">
+</p>
+
 # xcbuddy 🚀
 
 **The missing CLI for Xcode. Build, test, and manage iOS simulators with zero pain.**
@@ -34,7 +38,7 @@ If you are using AI coding assistants, `xcbuddy` includes a `SKILL.md` file desi
 ### Interactive Dashboard ✨ (Recommended)
 `xcbuddy` features a beautiful, boxed terminal UI dashboard for rapid development. Run the dashboard and use simple hotkeys to build, test, run, and stream logs without verbose console output!
 ```bash
-xcbuddy interactive
+xcbuddy i
 ```
 *Keyboard Shortcuts:* `r` (Run), `b` (Build), `t` (Test), `c` (Clean), `l` (Logs), `q` (Quit).
 
