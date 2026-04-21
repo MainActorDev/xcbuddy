@@ -93,8 +93,16 @@ struct RunCommand: ParsableCommand {
         _ = try Shell.run("xcrun", arguments: ["simctl", "install", simTargetUDID, appPath], echoPattern: false, quiet: true)
         TerminalUI.completeLastSubStep("App installed")
         
+        // Build framework search paths for dyld.
+        // When launching via simctl (instead of Xcode), dynamically-linked SPM frameworks
+        // (e.g. Lottie) are not found because Xcode's DYLD_FRAMEWORK_SEARCH_PATHS is not set.
+        // We inject it via the SIMCTL_CHILD_ prefix so simctl forwards it to the launched app.
+        let packageFrameworksDir = URL(fileURLWithPath: buildDir).appendingPathComponent("PackageFrameworks").path
+        let frameworkSearchPaths = "\(buildDir):\(packageFrameworksDir)"
+        
         TerminalUI.printSubStep("Launching \(bundleIdentifier)...")
-        _ = try Shell.run("xcrun", arguments: ["simctl", "launch", simTargetUDID, bundleIdentifier], echoPattern: false, quiet: true)
+        let launchCommand = "SIMCTL_CHILD_DYLD_FRAMEWORK_SEARCH_PATHS=\"\(frameworkSearchPaths)\" xcrun simctl launch \(simTargetUDID) \(bundleIdentifier)"
+        _ = try Shell.run("bash", arguments: ["-c", launchCommand], echoPattern: false, quiet: true)
         TerminalUI.completeLastSubStep("App launched")
         
         TerminalUI.printSuccess("App Launched Successfully")
