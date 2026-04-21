@@ -51,7 +51,7 @@ struct BuildCommand: ParsableCommand {
         do {
             if let beautifyPath = getXcbeautifyPath() {
                 TerminalUI.printSubStep("Using xcbeautify to format output...")
-                let fullCommand = "set -o pipefail && xcodebuild \(args.joined(separator: " ")) | \(beautifyPath) --quiet"
+                let fullCommand = "set -o pipefail && xcodebuild \(args.joined(separator: " ")) 2>&1 | \(beautifyPath) --quiet"
                 try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
             } else {
                 try Shell.run("xcodebuild", arguments: args, quiet: true)
