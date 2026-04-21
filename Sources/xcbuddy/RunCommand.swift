@@ -13,6 +13,9 @@ struct RunCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "The device to run on. Defaults to 'booted' simulator.")
     var destination: String?
     
+    @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
+    var isolated: Bool = false
+    
     func run() throws {
         let context = ProjectContext()
         guard context.isValid else {
@@ -24,27 +27,21 @@ struct RunCommand: ParsableCommand {
         TerminalUI.printMainStep("🚀", message: "Preparing \(buildScheme ?? "project") for execution...")
         
         // Find the simulator UDID early so we can build specifically for its architecture
-        var finalDestination = "generic/platform=iOS Simulator"
+        let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         var simTargetUDID = "booted"
-        
-        if let destName = destination {
-             // User requested specific simulator, try to resolve its UDID
-             if let udid = try? getSimulatorUDID(matching: destName) {
-                 finalDestination = "platform=iOS Simulator,id=\(udid)"
-                 simTargetUDID = udid
-             } else {
-                 TerminalUI.printSubStep("⚠️ Could not find specific simulator matching '\(destName)'. Falling back to generic simulator.")
-             }
-        } else {
-            // Find a currently booted simulator UDID just in case 'booted' is ambiguous
-             if let bootedUDID = try? getFirstBootedSimulatorUDID() {
-                 finalDestination = "platform=iOS Simulator,id=\(bootedUDID)"
-                 simTargetUDID = bootedUDID
-             }
+        if finalDestination.contains("id=") {
+            simTargetUDID = finalDestination.components(separatedBy: "id=").last ?? "booted"
         }
         
         // 1. Build the project using our BuildCommand logic
         var buildArgs = ["build"]
+        
+        let isIsolated = context.isIsolatedEnvironment(explicitlyRequested: isolated)
+        if isIsolated {
+            buildArgs.append(contentsOf: context.xcodebuildCacheArgs)
+            TerminalUI.printSubStep("✨ Auto-detected Isolated Cache Environment!")
+        }
+        
         buildArgs.append(contentsOf: context.xcodebuildTargetArgs)
         if let buildScheme { buildArgs.append(contentsOf: ["-scheme", buildScheme]) }
         buildArgs.append(contentsOf: ["-destination", finalDestination])
@@ -62,6 +59,7 @@ struct RunCommand: ParsableCommand {
         // 2. Locate built product
         TerminalUI.printSubStep("Locating build product...")
         var settingsArgs = ["xcodebuild", "-showBuildSettings"]
+        if isIsolated { settingsArgs.append(contentsOf: context.xcodebuildCacheArgs) }
         settingsArgs.append(contentsOf: context.xcodebuildTargetArgs)
         if let buildScheme { settingsArgs.append(contentsOf: ["-scheme", buildScheme]) }
         settingsArgs.append(contentsOf: ["-destination", finalDestination])
@@ -105,43 +103,7 @@ struct RunCommand: ParsableCommand {
         _ = try Shell.run("open", arguments: ["-a", "Simulator"], echoPattern: false, quiet: true)
     }
     
-    private func getSimulatorUDID(matching query: String) throws -> String? {
-        let jsonString = try Shell.capture("xcrun", arguments: ["simctl", "list", "devices", "-j"], echoPattern: false)
-        guard let data = jsonString.data(using: .utf8),
-              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let devicesDict = json["devices"] as? [String: [[String: Any]]] else { return nil }
-        
-        let runtimes = devicesDict.keys.sorted(by: { $0 > $1 })
-        for runtime in runtimes {
-            guard let devices = devicesDict[runtime] else { continue }
-            for device in devices {
-                let isAvailable = (device["isAvailable"] as? Bool) == true || (device["availability"] as? String) == "(available)"
-                guard isAvailable else { continue }
-                
-                let name = (device["name"] as? String ?? "").lowercased()
-                if name.contains(query.lowercased()) {
-                    return device["udid"] as? String
-                }
-            }
-        }
-        return nil
-    }
-    
-    private func getFirstBootedSimulatorUDID() throws -> String? {
-        let jsonString = try Shell.capture("xcrun", arguments: ["simctl", "list", "devices", "-j"], echoPattern: false)
-        guard let data = jsonString.data(using: .utf8),
-              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let devicesDict = json["devices"] as? [String: [[String: Any]]] else { return nil }
-              
-        for (_, devices) in devicesDict {
-            for device in devices {
-                if (device["state"] as? String) == "Booted" {
-                    return device["udid"] as? String
-                }
-            }
-        }
-        return nil
-    }
+
     
     private func isCommandAvailable(_ tool: String) throws -> Bool {
         do {

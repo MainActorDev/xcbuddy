@@ -19,6 +19,7 @@
 - **Clean with Power**: `xcbuddy clean --deep` wipes the specific DerivedData folder for your project.
 - **Real-time Logs**: `xcbuddy logs` streams simulator console output directly to your terminal.
 - **Beautified Output**: Integrated support for `xcbeautify` for readable build logs.
+- **Isolated Caching**: Pass `--isolated` to lock SPM caches and DerivedData straight into your `$PWD`, or let xcbuddy auto-detect existing local caches organically!
 
 ## 🛠 Installation
 
@@ -57,6 +58,9 @@ xcbuddy run -d "16 Pro"
 
 # Build and run on the currently booted simulator
 xcbuddy run
+
+# Build utilizing completely isolated local caching
+xcbuddy build --isolated
 ```
 
 ### Testing

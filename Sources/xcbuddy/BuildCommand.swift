@@ -13,6 +13,9 @@ struct BuildCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "The destination to build for. Defaults to iOS Simulator.")
     var destination: String?
     
+    @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
+    var isolated: Bool = false
+    
     func run() throws {
         let context = ProjectContext()
         
@@ -22,6 +25,11 @@ struct BuildCommand: ParsableCommand {
         }
         
         var args = ["build"]
+        
+        if context.isIsolatedEnvironment(explicitlyRequested: isolated) {
+            args.append(contentsOf: context.xcodebuildCacheArgs)
+            TerminalUI.printSubStep("✨ Auto-detected Isolated Cache Environment!")
+        }
         
         // Target args (-workspace or -project)
         args.append(contentsOf: context.xcodebuildTargetArgs)
@@ -35,35 +43,46 @@ struct BuildCommand: ParsableCommand {
         }
         
         // Destination
-        let finalDestination = destination ?? "generic/platform=iOS Simulator"
+        let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         args.append(contentsOf: ["-destination", finalDestination])
-        
-        // Default to beautified output if xcbeautify is installed
-        let useBeautify = try isCommandAvailable("xcbeautify")
         
         TerminalUI.printMainStep("🛠️", message: "Building \(buildScheme ?? "project") for \(finalDestination)...")
         
-        if useBeautify {
-            TerminalUI.printSubStep("Using xcbeautify to format output...")
+        do {
+            if let beautifyPath = getXcbeautifyPath() {
+                TerminalUI.printSubStep("Using xcbeautify to format output...")
+                let escapedArgs = args.map { $0.contains(" ") ? "\"\($0)\"" : $0 }
+                let fullCommand = "set -o pipefail && xcodebuild \(escapedArgs.joined(separator: " ")) 2>&1 | \(beautifyPath) --quiet"
+                try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
+            } else {
+                try Shell.run("xcodebuild", arguments: args, quiet: true)
+            }
+        } catch Shell.ShellError.executionFailed(let status, let output, let error) {
+            TerminalUI.printError("Build Failed (Status \(status))")
             
-            // For xcbeautify, we pipe using the bash shell to handle the pipe properly
-            let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
-        } else {
-            // raw xcodebuild
-            try Shell.run("xcodebuild", arguments: args, quiet: true)
+            print("\n🚨 ====== FAILURE DETAILS ======")
+            if !output.isEmpty {
+                print(output)
+            }
+            if !error.isEmpty {
+                print("\n🚨 ====== SYSTEM ERRORS ======")
+                print(error)
+            }
+            throw ExitCode.failure
         }
         
         TerminalUI.printSuccess("Build Succeeded")
     }
     
     /// Helper to check if a command exists in the user's path
-    private func isCommandAvailable(_ tool: String) throws -> Bool {
-        do {
-            _ = try Shell.capture("which", arguments: [tool])
-            return true
-        } catch {
-            return false
+    private func getXcbeautifyPath() -> String? {
+        if let path = try? Shell.capture("which", arguments: ["xcbeautify"]), !path.isEmpty {
+            return "xcbeautify"
         }
+        let homebrewPath = "/opt/homebrew/bin/xcbeautify"
+        if FileManager.default.fileExists(atPath: homebrewPath) {
+            return homebrewPath
+        }
+        return nil
     }
 }

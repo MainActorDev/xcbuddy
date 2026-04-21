@@ -16,6 +16,9 @@ struct TestCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "The destination to test on (e.g. \"15 pro\"). Defaults to an iOS Simulator.")
     var destination: String?
     
+    @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
+    var isolated: Bool = false
+    
     @Flag(name: [.short, .customLong("coverage")], help: "Enable code coverage and print/open the report.")
     var coverage: Bool = false
     
@@ -27,6 +30,12 @@ struct TestCommand: ParsableCommand {
         }
         
         var args = ["test"]
+        
+        if context.isIsolatedEnvironment(explicitlyRequested: isolated) {
+            args.append(contentsOf: context.xcodebuildCacheArgs)
+            TerminalUI.printSubStep("✨ Auto-detected Isolated Cache Environment!")
+        }
+        
         args.append(contentsOf: context.xcodebuildTargetArgs)
         
         let buildScheme = scheme ?? context.inferredScheme
@@ -34,8 +43,8 @@ struct TestCommand: ParsableCommand {
              args.append(contentsOf: ["-scheme", buildScheme])
         }
         
-        // Resolve Destination (Simplified for now, similar to build)
-        let finalDestination = destination ?? "generic/platform=iOS Simulator"
+        // Resolve Destination
+        let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         args.append(contentsOf: ["-destination", finalDestination])
         
         if let onlyTest {
@@ -54,13 +63,27 @@ struct TestCommand: ParsableCommand {
         
         TerminalUI.printMainStep("🧪", message: "Testing \(buildScheme ?? "project")...")
         
-        let useBeautify = try isCommandAvailable("xcbeautify")
-        if useBeautify {
-            TerminalUI.printSubStep("Using xcbeautify to format output...")
-            let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
-        } else {
-            try Shell.run("xcodebuild", arguments: args, quiet: true)
+        do {
+            if let beautifyPath = getXcbeautifyPath() {
+                TerminalUI.printSubStep("Using xcbeautify to format output...")
+                let escapedArgs = args.map { $0.contains(" ") ? "\"\($0)\"" : $0 }
+                let fullCommand = "set -o pipefail && xcodebuild \(escapedArgs.joined(separator: " ")) 2>&1 | \(beautifyPath) --quiet"
+                try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
+            } else {
+                try Shell.run("xcodebuild", arguments: args, quiet: true)
+            }
+        } catch Shell.ShellError.executionFailed(let status, let output, let error) {
+            TerminalUI.printError("Testing Failed (Status \(status))")
+            
+            print("\n🚨 ====== FAILURE DETAILS ======")
+            if !output.isEmpty {
+                print(output)
+            }
+            if !error.isEmpty {
+                print("\n🚨 ====== SYSTEM ERRORS ======")
+                print(error)
+            }
+            throw ExitCode.failure
         }
         
         TerminalUI.printSuccess("Testing Completed")
@@ -90,6 +113,17 @@ struct TestCommand: ParsableCommand {
             // The first line might be blank or have header, just print it padded
             print("\n\(report)\n")
         }
+    }
+    
+    private func getXcbeautifyPath() -> String? {
+        if let path = try? Shell.capture("which", arguments: ["xcbeautify"]), !path.isEmpty {
+            return "xcbeautify"
+        }
+        let homebrewPath = "/opt/homebrew/bin/xcbeautify"
+        if FileManager.default.fileExists(atPath: homebrewPath) {
+            return homebrewPath
+        }
+        return nil
     }
     
     private func isCommandAvailable(_ tool: String) throws -> Bool {
