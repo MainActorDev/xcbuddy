@@ -49,10 +49,9 @@ struct BuildCommand: ParsableCommand {
         TerminalUI.printMainStep("🛠️", message: "Building \(buildScheme ?? "project") for \(finalDestination)...")
         
         do {
-            let useBeautify = try isCommandAvailable("xcbeautify")
-            if useBeautify {
+            if let beautifyPath = getXcbeautifyPath() {
                 TerminalUI.printSubStep("Using xcbeautify to format output...")
-                let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify --quiet"
+                let fullCommand = "set -o pipefail && xcodebuild \(args.joined(separator: " ")) | \(beautifyPath) --quiet"
                 try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
             } else {
                 try Shell.run("xcodebuild", arguments: args, quiet: true)
@@ -75,12 +74,14 @@ struct BuildCommand: ParsableCommand {
     }
     
     /// Helper to check if a command exists in the user's path
-    private func isCommandAvailable(_ tool: String) throws -> Bool {
-        do {
-            _ = try Shell.capture("which", arguments: [tool])
-            return true
-        } catch {
-            return false
+    private func getXcbeautifyPath() -> String? {
+        if let path = try? Shell.capture("which", arguments: ["xcbeautify"]), !path.isEmpty {
+            return "xcbeautify"
         }
+        let homebrewPath = "/opt/homebrew/bin/xcbeautify"
+        if FileManager.default.fileExists(atPath: homebrewPath) {
+            return homebrewPath
+        }
+        return nil
     }
 }
