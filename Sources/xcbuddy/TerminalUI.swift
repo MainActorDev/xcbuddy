@@ -105,15 +105,50 @@ public struct TerminalUI {
         print("│\(String(repeating: " ", count: width - 2))│")
         print("│\(String(repeating: " ", count: width - 2))│")
         
-        // --- 5. Bottom Shortcut Border ---
-        let shortcutsRaw = " [r → Run] [b → Build] [t → Test] [c → Clean] [l → Logs] [q → Quit] "
+        print("│\(String(repeating: " ", count: width - 2))│")
         
-        // We want to color it nicely but keep border integrity
-        let shortcutsColored = " [\(yellow)r\(reset) → Run] [\(yellow)b\(reset) → Build] [\(yellow)t\(reset) → Test] [\(yellow)c\(reset) → Clean] [\(yellow)l\(reset) → Logs] [\(dim)q\(reset) → Quit] "
+        // --- 4.5 Keyboard Shortcuts (3 columns) ---
+        let colWidth = 22
+        let totalShortcutWidth = colWidth * 3
+        let shortcutPad = (width - 2 - totalShortcutWidth) / 2
+        let spLeft = String(repeating: " ", count: shortcutPad)
+        let spRight = String(repeating: " ", count: width - 2 - totalShortcutWidth - shortcutPad)
         
-        // Center the shortcuts in the bottom border
-        let rightDashCnt = max(0, width - 2 - shortcutsRaw.count - leftDashesCount)
-        let bottomBorder = "└" + String(repeating: "─", count: leftDashesCount) + shortcutsColored + String(repeating: "─", count: rightDashCnt) + "┘"
+        func printTripleShortcut(_ left: String, _ middle: String, _ right: String) {
+            print("│\(spLeft)\(left)\(middle)\(right)\(spRight)│")
+        }
+        
+        let cKey = { (k: String) in "\(yellow)\(k)\(reset)" }
+        let cKeyDim = { (k: String) in "\(dim)\(k)\(reset)" }
+        
+        // Helper that padds a string considering ANSI escape codes length
+        func padANSI(_ text: String, visibleLength: Int, targetLength: Int) -> String {
+            let padding = max(0, targetLength - visibleLength)
+            return text + String(repeating: " ", count: padding)
+        }
+        
+        printTripleShortcut(
+            padANSI("[\(cKey("r")) → Run]", visibleLength: 9, targetLength: colWidth),
+            padANSI("[\(cKey("b")) → Build]", visibleLength: 11, targetLength: colWidth),
+            padANSI("[\(cKey("t")) → Test]", visibleLength: 10, targetLength: colWidth)
+        )
+        
+        printTripleShortcut(
+            padANSI("[\(cKey("s")) → Select]", visibleLength: 12, targetLength: colWidth),
+            padANSI("[\(cKey("c")) → Clean]", visibleLength: 11, targetLength: colWidth),
+            padANSI("[\(cKey("l")) → Logs]", visibleLength: 10, targetLength: colWidth)
+        )
+                          
+        printTripleShortcut(
+            padANSI("[\(cKeyDim("q")) → Quit]", visibleLength: 10, targetLength: colWidth),
+            padANSI("", visibleLength: 0, targetLength: colWidth),
+            padANSI("", visibleLength: 0, targetLength: colWidth)
+        )
+                          
+        print("│\(String(repeating: " ", count: width - 2))│")
+        
+        // --- 5. Bottom Border ---
+        let bottomBorder = "└" + String(repeating: "─", count: width - 2) + "┘"
         
         print(bottomBorder)
     }
