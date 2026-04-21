@@ -46,20 +46,29 @@ struct BuildCommand: ParsableCommand {
         let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         args.append(contentsOf: ["-destination", finalDestination])
         
-        // Default to beautified output if xcbeautify is installed
-        let useBeautify = try isCommandAvailable("xcbeautify")
-        
         TerminalUI.printMainStep("🛠️", message: "Building \(buildScheme ?? "project") for \(finalDestination)...")
         
-        if useBeautify {
-            TerminalUI.printSubStep("Using xcbeautify to format output...")
+        do {
+            let useBeautify = try isCommandAvailable("xcbeautify")
+            if useBeautify {
+                TerminalUI.printSubStep("Using xcbeautify to format output...")
+                let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify --quiet"
+                try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
+            } else {
+                try Shell.run("xcodebuild", arguments: args, quiet: true)
+            }
+        } catch Shell.ShellError.executionFailed(let status, let output, let error) {
+            TerminalUI.printError("Build Failed (Status \(status))")
             
-            // For xcbeautify, we pipe using the bash shell to handle the pipe properly
-            let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
-        } else {
-            // raw xcodebuild
-            try Shell.run("xcodebuild", arguments: args, quiet: true)
+            print("\n🚨 ====== FAILURE DETAILS ======")
+            if !output.isEmpty {
+                print(output)
+            }
+            if !error.isEmpty {
+                print("\n🚨 ====== SYSTEM ERRORS ======")
+                print(error)
+            }
+            throw ExitCode.failure
         }
         
         TerminalUI.printSuccess("Build Succeeded")

@@ -63,13 +63,27 @@ struct TestCommand: ParsableCommand {
         
         TerminalUI.printMainStep("🧪", message: "Testing \(buildScheme ?? "project")...")
         
-        let useBeautify = try isCommandAvailable("xcbeautify")
-        if useBeautify {
-            TerminalUI.printSubStep("Using xcbeautify to format output...")
-            let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
-        } else {
-            try Shell.run("xcodebuild", arguments: args, quiet: true)
+        do {
+            let useBeautify = try isCommandAvailable("xcbeautify")
+            if useBeautify {
+                TerminalUI.printSubStep("Using xcbeautify to format output...")
+                let fullCommand = "xcodebuild \(args.joined(separator: " ")) | xcbeautify --quiet"
+                try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
+            } else {
+                try Shell.run("xcodebuild", arguments: args, quiet: true)
+            }
+        } catch Shell.ShellError.executionFailed(let status, let output, let error) {
+            TerminalUI.printError("Testing Failed (Status \(status))")
+            
+            print("\n🚨 ====== FAILURE DETAILS ======")
+            if !output.isEmpty {
+                print(output)
+            }
+            if !error.isEmpty {
+                print("\n🚨 ====== SYSTEM ERRORS ======")
+                print(error)
+            }
+            throw ExitCode.failure
         }
         
         TerminalUI.printSuccess("Testing Completed")
