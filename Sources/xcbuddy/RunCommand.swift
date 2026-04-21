@@ -89,6 +89,46 @@ struct RunCommand: ParsableCommand {
         Thread.sleep(forTimeInterval: 5.0)
         TerminalUI.completeLastSubStep("Simulator UI ready")
         
+        // Embed dynamic SPM frameworks into the app bundle before installing.
+        // When launching via simctl (instead of Xcode), the simulator runtime sandboxes
+        // DYLD_FRAMEWORK_SEARCH_PATHS, so absolute paths to DerivedData don't resolve.
+        // The .debug.dylib already has @executable_path/Frameworks in its rpath,
+        // so copying the frameworks there makes them discoverable at runtime.
+        TerminalUI.printSubStep("Embedding dynamic frameworks...")
+        let appURL = URL(fileURLWithPath: appPath)
+        let appFrameworksDir = appURL.appendingPathComponent("Frameworks")
+        let buildDirURL = URL(fileURLWithPath: buildDir)
+        let fm = FileManager.default
+        
+        try? fm.createDirectory(at: appFrameworksDir, withIntermediateDirectories: true)
+        
+        // Scan the build products directory for .framework bundles that are dynamically linked
+        if let contents = try? fm.contentsOfDirectory(atPath: buildDir) {
+            for item in contents where item.hasSuffix(".framework") {
+                let srcFramework = buildDirURL.appendingPathComponent(item)
+                let dstFramework = appFrameworksDir.appendingPathComponent(item)
+                
+                // Check if the binary inside the framework exists
+                let binaryName = (item as NSString).deletingPathExtension
+                let binaryPath = srcFramework.appendingPathComponent(binaryName).path
+                guard fm.fileExists(atPath: binaryPath) else { continue }
+                
+                // Only embed dynamic frameworks (dylib), not static archives.
+                // Static archives will cause simctl install to fail.
+                let fileOutput = (try? Shell.capture("file", arguments: [binaryPath], echoPattern: false)) ?? ""
+                guard fileOutput.contains("dynamically linked") else { continue }
+                
+                // Skip if already embedded
+                if fm.fileExists(atPath: dstFramework.path) { continue }
+                
+                try? fm.copyItem(at: srcFramework, to: dstFramework)
+            }
+        }
+        
+        // Re-sign the app bundle after embedding (ad-hoc signing for simulator)
+        _ = try? Shell.run("codesign", arguments: ["--force", "--sign", "-", "--deep", appPath], echoPattern: false, quiet: true)
+        TerminalUI.completeLastSubStep("Embedded dynamic frameworks")
+        
         TerminalUI.printSubStep("Installing app to \(simTargetUDID)...")
         _ = try Shell.run("xcrun", arguments: ["simctl", "install", simTargetUDID, appPath], echoPattern: false, quiet: true)
         TerminalUI.completeLastSubStep("App installed")
