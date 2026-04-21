@@ -16,6 +16,9 @@ struct TestCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "The destination to test on (e.g. \"15 pro\"). Defaults to an iOS Simulator.")
     var destination: String?
     
+    @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
+    var isolated: Bool = false
+    
     func run() throws {
         let context = ProjectContext()
         guard context.isValid else {
@@ -24,6 +27,12 @@ struct TestCommand: ParsableCommand {
         }
         
         var args = ["test"]
+        
+        if context.isIsolatedEnvironment(explicitlyRequested: isolated) {
+            args.append(contentsOf: context.xcodebuildCacheArgs)
+            TerminalUI.printSubStep("✨ Auto-detected Isolated Cache Environment!")
+        }
+        
         args.append(contentsOf: context.xcodebuildTargetArgs)
         
         let buildScheme = scheme ?? context.inferredScheme
@@ -31,8 +40,8 @@ struct TestCommand: ParsableCommand {
              args.append(contentsOf: ["-scheme", buildScheme])
         }
         
-        // Resolve Destination (Simplified for now, similar to build)
-        let finalDestination = destination ?? "generic/platform=iOS Simulator"
+        // Resolve Destination
+        let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         args.append(contentsOf: ["-destination", finalDestination])
         
         if let onlyTest {

@@ -59,4 +59,33 @@ public struct ProjectContext {
         }
         return []
     }
+    
+    /// Determines if the current environment should natively intercept caching overrides
+    public func isIsolatedEnvironment(explicitlyRequested: Bool) -> Bool {
+        if explicitlyRequested { return true }
+        
+        let fm = FileManager.default
+        let currentDir = fm.currentDirectoryPath
+        let derivedData = URL(fileURLWithPath: currentDir).appendingPathComponent(".derived-data").path
+        let spmClones = URL(fileURLWithPath: currentDir).appendingPathComponent(".spm-clones").path
+        
+        return fm.fileExists(atPath: derivedData) || fm.fileExists(atPath: spmClones)
+    }
+    
+    /// The isolated xcodebuild overrides for local SPM caches
+    public var xcodebuildCacheArgs: [String] {
+        let currentDir = FileManager.default.currentDirectoryPath
+        let derivedData = URL(fileURLWithPath: currentDir).appendingPathComponent(".derived-data").path
+        let spmCache = URL(fileURLWithPath: currentDir).appendingPathComponent(".spm-cache").path
+        let spmClones = URL(fileURLWithPath: currentDir).appendingPathComponent(".spm-clones").path
+        
+        return [
+            "-clonedSourcePackagesDirPath", spmClones,
+            "-packageCachePath", spmCache,
+            "-derivedDataPath", derivedData,
+            "-disableAutomaticPackageResolution",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "-skipPackageUpdates"
+        ]
+    }
 }

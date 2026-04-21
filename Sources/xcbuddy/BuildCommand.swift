@@ -13,6 +13,9 @@ struct BuildCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "The destination to build for. Defaults to iOS Simulator.")
     var destination: String?
     
+    @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
+    var isolated: Bool = false
+    
     func run() throws {
         let context = ProjectContext()
         
@@ -22,6 +25,11 @@ struct BuildCommand: ParsableCommand {
         }
         
         var args = ["build"]
+        
+        if context.isIsolatedEnvironment(explicitlyRequested: isolated) {
+            args.append(contentsOf: context.xcodebuildCacheArgs)
+            TerminalUI.printSubStep("✨ Auto-detected Isolated Cache Environment!")
+        }
         
         // Target args (-workspace or -project)
         args.append(contentsOf: context.xcodebuildTargetArgs)
@@ -35,7 +43,7 @@ struct BuildCommand: ParsableCommand {
         }
         
         // Destination
-        let finalDestination = destination ?? "generic/platform=iOS Simulator"
+        let finalDestination = SimulatorResolver.resolveDestination(from: destination)
         args.append(contentsOf: ["-destination", finalDestination])
         
         // Default to beautified output if xcbeautify is installed
