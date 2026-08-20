@@ -48,11 +48,29 @@ struct RunCommand: ParsableCommand {
         
         TerminalUI.printSubStep("Compiling for \(finalDestination)...")
         let useBeautify = try isCommandAvailable("xcbeautify")
-        if useBeautify {
-            let fullCommand = "xcodebuild \(buildArgs.joined(separator: " ")) | xcbeautify"
-            try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
-        } else {
-            try Shell.run("xcodebuild", arguments: buildArgs, quiet: true)
+        do {
+            if useBeautify {
+                // Quote args containing spaces (e.g. -destination "platform=iOS Simulator,id=…")
+                // and use pipefail so xcodebuild's failure isn't masked by xcbeautify's exit 0 —
+                // otherwise a failed build silently continues to install the stale product.
+                let escapedArgs = buildArgs.map { $0.contains(" ") ? "\"\($0)\"" : $0 }
+                let fullCommand = "set -o pipefail && xcodebuild \(escapedArgs.joined(separator: " ")) 2>&1 | xcbeautify"
+                try Shell.run("bash", arguments: ["-c", fullCommand], echoPattern: false, quiet: true)
+            } else {
+                try Shell.run("xcodebuild", arguments: buildArgs, quiet: true)
+            }
+        } catch Shell.ShellError.executionFailed(let status, let output, let error) {
+            TerminalUI.printError("Build Failed (Status \(status))")
+
+            print("\n🚨 ====== FAILURE DETAILS ======")
+            if !output.isEmpty {
+                print(output)
+            }
+            if !error.isEmpty {
+                print("\n🚨 ====== SYSTEM ERRORS ======")
+                print(error)
+            }
+            throw ExitCode.failure
         }
         TerminalUI.completeLastSubStep("Compiling for \(finalDestination)")
         
