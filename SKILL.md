@@ -24,9 +24,26 @@ Ensure `~/.local/bin` is in `$PATH`.
 ## Core Rules
 
 1. **NEVER** use raw `xcodebuild build`, `xcodebuild test`, or `xcrun simctl` directly. Always use `xcbuddy`.
-2. **NEVER** pass `-workspace`, `-project`, or `-scheme` arguments. `xcbuddy` auto-detects them.
+2. **NEVER** pass `-workspace`, `-project`, or `-scheme` arguments. `xcbuddy` auto-detects them (scheme inference consults `xcodebuild -list`: CocoaPods workspaces resolve to `Dev`/`Staging`/`Production`, not the workspace name).
 3. **NEVER** pass long destination strings like `platform=iOS Simulator,name=iPhone 17 Pro`. Use fuzzy names like `-d "17 pro"`.
 4. **NEVER** pass `-derivedDataPath`, `-clonedSourcePackagesDirPath`, or `-packageCachePath`. `xcbuddy` auto-injects them when it detects an isolated environment (`.derived-data/` or `.spm-clones/` in `$PWD`).
+5. **Parse failures from the `--json` envelope, not the text block.** On failure, read the LAST JSON object on stdout: `success`, `firstError`, `file`, `line`, `column`, `category` (`compileSwift`/`linkError`/`codeSign`/`packageResolution`/`destination`/`scheme`/`testFailure`/`unknown`), `hints` (actionable next steps), `context` (error-site lines), `logPath` (full raw log auto-saved under `.xcbuddy-logs/`). Do not grep the beautified output for errors — a warning's message text can contain "error:" and mislead you.
+
+## Error Reporting
+
+Build and test failures print a structured block:
+
+```text
+🚨 FAILURE SPOTLIGHT   — one-line error, file:line:col, category
+💡 NEXT STEPS          — actionable hints for the category
+🧾 CONTEXT             — lines around the error site
+📄 raw log saved: .xcbuddy-logs/{build|test}-<timestamp>.log
+```
+
+- For programmatic/agent use, add `--json` and parse the last JSON line.
+- On success, `--json` emits `{"success":true,"durationSeconds":...}`.
+- Post-mortem: the full raw log always lands in `.xcbuddy-logs/` — cite `logPath` when reporting failures instead of pasting the whole log.
+- Add `.xcbuddy-logs/` to the target repo's `.gitignore` — it is transient build output.
 
 ## Commands Reference
 
@@ -40,6 +57,9 @@ xcbuddy build -d "17 pro"
 
 # Build with explicit isolated caching
 xcbuddy build --isolated
+
+# Build with machine-readable result envelope (agents/CI)
+xcbuddy build --json
 ```
 
 ### Test
@@ -55,6 +75,9 @@ xcbuddy test --only "MyAppTests/LoginTests/testLoginSuccess" -d "17 pro"
 
 # Run tests with code coverage report
 xcbuddy test --coverage -d "17 pro"
+
+# Run tests with machine-readable result envelope
+xcbuddy test --json -d "17 pro"
 ```
 
 > **CRITICAL**: The `--only` flag requires `TestTargetName/TestClassName` format — NOT file paths.

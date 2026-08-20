@@ -20,6 +20,9 @@
 - **Real-time Logs**: `xcbuddy logs` streams simulator console output directly to your terminal.
 - **Beautified Output**: Integrated support for `xcbeautify` for readable build logs.
 - **Isolated Caching**: Pass `--isolated` to lock SPM caches and DerivedData straight into your `$PWD`, or let xcbuddy auto-detect existing local caches organically!
+- **Rich Failure Reporting**: Build/test failures are parsed into an actionable summary — first error with `file:line:col`, failure category (compile/link/codesign/package/destination/scheme), next-step hints, error-site context, and the raw log auto-saved to `.xcbuddy-logs/`.
+- **Machine-Readable Output**: `xcbuddy build --json` / `xcbuddy test --json` emit a JSON envelope (success, firstError, file, line, category, hints, logPath, durationSeconds) for agent/CI integration — parse the last JSON object on stdout.
+- **Smart Scheme Inference**: Scheme detection consults `xcodebuild -list` — CocoaPods workspaces resolve to real app schemes (`Dev`/`Staging`/`Production`), not the workspace-name guess.
 
 ## 🛠 Installation
 
@@ -61,7 +64,31 @@ xcbuddy run
 
 # Build utilizing completely isolated local caching
 xcbuddy build --isolated
+
+# Build with a machine-readable result envelope (agents/CI)
+xcbuddy build --json
 ```
+
+#### Failure output (build & test)
+
+On failure xcbuddy prints a structured block instead of a raw dump:
+
+```text
+🚨 ====== FAILURE SPOTLIGHT ======
+  ▸ cannot find 'undefinedSymbolHere' in scope
+  ▸ at /path/App/Sources/Screen.swift:39:32
+  ▸ category: compileSwift
+
+💡 ====== NEXT STEPS ======
+  1. Open the file at line 39 — fix the compile error, rebuild.
+  ...
+
+📄 raw log saved: /path/repo/.xcbuddy-logs/build-2026-08-20T08-16-15Z.log
+```
+
+With `--json`, the same information is emitted as a JSON object (the **last**
+JSON line on stdout) — `success`, `firstError`, `file`, `line`, `column`,
+`category`, `hints`, `context`, `logPath`, `durationSeconds`, `status`.
 
 ### Testing
 ```bash
@@ -73,6 +100,9 @@ xcbuddy test --only "MyTests/LoginTests"
 
 # Run tests and generate/open an HTML coverage report
 xcbuddy test --coverage
+
+# Run tests with a machine-readable result envelope (agents/CI)
+xcbuddy test --json
 ```
 
 ### Simulator Management

@@ -18,5 +18,10 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
+        .testTarget(
+            name: "xcbuddyTests",
+            dependencies: ["xcbuddy"],
+            path: "Tests/xcbuddyTests"
+        ),
     ]
 )

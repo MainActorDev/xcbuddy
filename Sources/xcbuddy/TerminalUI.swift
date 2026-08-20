@@ -189,9 +189,31 @@ public struct TerminalUI {
         print("\n\(green)✓\(reset) \(message)\n")
     }
     
+    /// Prints a distinct success message with elapsed duration.
+    public static func printSuccess(_ message: String, duration: TimeInterval) {
+        let timeStr = formatDuration(duration)
+        print("\n\(green)✓\(reset) \(message) \(dim)in \(timeStr)\(reset)\n")
+    }
+    
     /// Prints a distinct error message.
     public static func printError(_ message: String) {
         print("\n\(red)❌ ERROR:\(reset) \(message)\n")
+    }
+    
+    /// Formats a TimeInterval into a human-readable string (e.g. "2m 34s", "45s", "1h 5m 12s").
+    public static func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m \(seconds)s"
+        } else if minutes > 0 {
+            return "\(minutes)m \(seconds)s"
+        } else {
+            return "\(seconds)s"
+        }
     }
     
     /// Simple prompt arrow
