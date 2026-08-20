@@ -21,6 +21,9 @@ struct TestCommand: ParsableCommand {
     
     @Flag(name: [.short, .customLong("coverage")], help: "Enable code coverage and print/open the report.")
     var coverage: Bool = false
+
+    @Flag(name: .long, help: "Emit a machine-readable JSON failure envelope (for lpctl/agents).")
+    var json: Bool = false
     
     func run() throws {
         let context = ProjectContext()
@@ -63,6 +66,8 @@ struct TestCommand: ParsableCommand {
         
         TerminalUI.printMainStep("🧪", message: "Testing \(buildScheme ?? "project")...")
         
+        let startTime = Date()
+        
         do {
             if let beautifyPath = getXcbeautifyPath() {
                 TerminalUI.printSubStep("Using xcbeautify to format output...")
@@ -73,20 +78,16 @@ struct TestCommand: ParsableCommand {
                 try Shell.run("xcodebuild", arguments: args, quiet: true)
             }
         } catch Shell.ShellError.executionFailed(let status, let output, let error) {
-            TerminalUI.printError("Testing Failed (Status \(status))")
-            
-            print("\n🚨 ====== FAILURE DETAILS ======")
-            if !output.isEmpty {
-                print(output)
-            }
-            if !error.isEmpty {
-                print("\n🚨 ====== SYSTEM ERRORS ======")
-                print(error)
-            }
+            let elapsed = Date().timeIntervalSince(startTime)
+            _ = FailureReporter.report(
+                kind: "test", status: status, output: output, systemError: error,
+                elapsed: elapsed, isTestRun: true, json: json
+            )
             throw ExitCode.failure
         }
         
-        TerminalUI.printSuccess("Testing Completed")
+        let elapsed = Date().timeIntervalSince(startTime)
+        TerminalUI.printSuccess("Testing Completed", duration: elapsed)
         
         if coverage {
             try generateCoverageReport(resultBundlePath: resultBundlePath)

@@ -15,6 +15,9 @@ struct BuildCommand: ParsableCommand {
     
     @Flag(name: .customLong("isolated"), help: "Forces isolated caching mode for SPM and DerivedData.")
     var isolated: Bool = false
+
+    @Flag(name: .long, help: "Emit a machine-readable JSON failure envelope (for lpctl/agents).")
+    var json: Bool = false
     
     func run() throws {
         let context = ProjectContext()
@@ -48,6 +51,8 @@ struct BuildCommand: ParsableCommand {
         
         TerminalUI.printMainStep("🛠️", message: "Building \(buildScheme ?? "project") for \(finalDestination)...")
         
+        let startTime = Date()
+        
         do {
             if let beautifyPath = getXcbeautifyPath() {
                 TerminalUI.printSubStep("Using xcbeautify to format output...")
@@ -58,20 +63,26 @@ struct BuildCommand: ParsableCommand {
                 try Shell.run("xcodebuild", arguments: args, quiet: true)
             }
         } catch Shell.ShellError.executionFailed(let status, let output, let error) {
-            TerminalUI.printError("Build Failed (Status \(status))")
-            
-            print("\n🚨 ====== FAILURE DETAILS ======")
-            if !output.isEmpty {
-                print(output)
-            }
-            if !error.isEmpty {
-                print("\n🚨 ====== SYSTEM ERRORS ======")
-                print(error)
-            }
+            let elapsed = Date().timeIntervalSince(startTime)
+            _ = FailureReporter.report(
+                kind: "build", status: status, output: output, systemError: error,
+                elapsed: elapsed, json: json
+            )
             throw ExitCode.failure
         }
-        
-        TerminalUI.printSuccess("Build Succeeded")
+
+        let elapsed = Date().timeIntervalSince(startTime)
+        if json {
+            let env = FailureReporter.Envelope(
+                success: true, durationSeconds: elapsed, status: 0,
+                firstError: "", file: nil, line: nil, column: nil,
+                category: "", hints: [], context: [], logPath: nil
+            )
+            if let data = try? JSONEncoder().encode(env), let str = String(data: data, encoding: .utf8) {
+                print(str)
+            }
+        }
+        TerminalUI.printSuccess("Build Succeeded", duration: elapsed)
     }
     
     /// Helper to check if a command exists in the user's path
